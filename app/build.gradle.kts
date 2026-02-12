@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.milospavlovic4046.cryptotracker"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.milospavlovic4046.cryptotracker"

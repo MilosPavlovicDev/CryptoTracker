@@ -13,35 +13,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.milospavlovic4046.cryptotracker.ui.theme.CryptoTrackerTheme
 
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.milospavlovic4046.cryptotracker.presentation.components.HomeScreen
+import com.milospavlovic4046.cryptotracker.presentation.components.HomeViewModel
+import com.milospavlovic4046.cryptotracker.ui.theme.CryptoTrackerTheme
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             CryptoTrackerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                val vm: HomeViewModel = viewModel()
+                HomeScreen(vm = vm)
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    CryptoTrackerTheme {
-        Greeting("Android")
     }
 }

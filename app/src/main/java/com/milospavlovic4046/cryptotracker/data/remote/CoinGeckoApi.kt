@@ -11,7 +11,7 @@ class CoinGeckoApi(
 ) {
     suspend fun getCoinsMarket(
         vsCurrency: String = "usd",
-        perPage: Int = 250,
+        perPage: Int = 50,
         page: Int = 1
     ): List<CoinDto> {
         return client.get("https://api.coingecko.com/api/v3/coins/markets") {
