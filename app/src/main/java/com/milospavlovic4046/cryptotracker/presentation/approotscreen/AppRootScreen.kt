@@ -20,9 +20,42 @@ import com.milospavlovic4046.cryptotracker.presentation.components.HomeScreen
 import com.milospavlovic4046.cryptotracker.presentation.components.HomeViewModel
 import com.milospavlovic4046.cryptotracker.presentation.portfolio.PortfolioScreen
 import com.milospavlovic4046.cryptotracker.presentation.portfolio.PortfolioViewModel
+import com.milospavlovic4046.cryptotracker.presentation.onboarding.OnboardingProfileScreen
+import com.milospavlovic4046.cryptotracker.presentation.onboarding.OnboardingViewModel
+import com.milospavlovic4046.cryptotracker.presentation.onboarding.OnboardingWelcomeScreen
+import com.milospavlovic4046.cryptotracker.presentation.SessionViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun AppRootScreen() {
+
+    val sessionVm: SessionViewModel = hiltViewModel()
+    val user by sessionVm.user.collectAsStateWithLifecycle()
+
+    // Onboarding step: 0=welcome, 1=profile
+    var onboardingStep by remember { mutableIntStateOf(0) }
+
+    if (user == null) {
+        val onboardingVm: OnboardingViewModel = hiltViewModel()
+
+        when (onboardingStep) {
+            0 -> OnboardingWelcomeScreen(
+                onStart = { onboardingStep = 1 }
+            )
+
+            1 -> OnboardingProfileScreen(
+                onSave = { name, age ->
+                    onboardingVm.saveUser(name, age)
+                    // ne moramo ručno da prebacujemo dalje;
+                    // SessionViewModel će dobiti user != null i UI će sam preći u app
+                }
+            )
+        }
+
+        return
+    }
+
+    val userName = user!!.name
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -49,6 +82,7 @@ fun AppRootScreen() {
                 val homeVm: HomeViewModel = hiltViewModel()
                 HomeScreen(
                     vm = homeVm,
+                    userName = userName,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
@@ -57,6 +91,7 @@ fun AppRootScreen() {
                 val portfolioVm: PortfolioViewModel = hiltViewModel()
                 PortfolioScreen(
                     vm = portfolioVm,
+                    userName = userName,
                     modifier = Modifier.padding(paddingValues)
                 )
             }

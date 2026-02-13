@@ -21,10 +21,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @Composable
-fun PortfolioScreen(
-    vm: PortfolioViewModel,
-    modifier: Modifier = Modifier
-) {
+fun PortfolioScreen(vm: PortfolioViewModel, userName: String, modifier: Modifier = Modifier) {
     val state by vm.state.collectAsStateWithLifecycle()
 
     var showEditor by remember { mutableStateOf(false) }
@@ -42,7 +39,10 @@ fun PortfolioScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Portfolio", style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = "${userName}'s portfolio",
+                style = MaterialTheme.typography.titleMedium
+            )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { vm.clearAll() }) { Text("Clear") }

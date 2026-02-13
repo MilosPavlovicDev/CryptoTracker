@@ -13,8 +13,7 @@ import com.milospavlovic4046.cryptotracker.presentation.components.StatisticView
 import androidx.compose.foundation.layout.statusBarsPadding
 
 @Composable
-fun HomeScreen(vm: HomeViewModel,
-               modifier: Modifier = Modifier) {
+fun HomeScreen(vm: HomeViewModel, userName: String, modifier: Modifier = Modifier) {
     val state by vm.state.collectAsStateWithLifecycle()
 
     Column(
@@ -28,7 +27,7 @@ fun HomeScreen(vm: HomeViewModel,
             Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Live Prices", style = MaterialTheme.typography.titleLarge)
+            Text("Hi, $userName 🚀", style = MaterialTheme.typography.titleLarge)
             TextButton(onClick = { vm.refresh() }) { Text("Refresh") }
         }
 

@@ -7,6 +7,8 @@ import com.milospavlovic4046.cryptotracker.data.local.db.AppDatabase
 import com.milospavlovic4046.cryptotracker.data.remote.CoinGeckoApi
 import com.milospavlovic4046.cryptotracker.repository.MarketRepository
 import com.milospavlovic4046.cryptotracker.repository.PortfolioRepository
+import com.milospavlovic4046.cryptotracker.data.local.dao.UserDao
+import com.milospavlovic4046.cryptotracker.repository.UserRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,9 +37,18 @@ object AppModule {
     fun providePortfolioDao(db: AppDatabase): PortfolioDao = db.portfolioDao()
 
     @Provides
+    fun provideUserDao(db: AppDatabase): UserDao = db.userDao()
+
+    @Provides
     @Singleton
     fun providePortfolioRepository(dao: PortfolioDao): PortfolioRepository {
         return PortfolioRepository(dao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserRepository(dao: UserDao): UserRepository {
+        return UserRepository(dao)
     }
 
     // ---- API + REPO ----
