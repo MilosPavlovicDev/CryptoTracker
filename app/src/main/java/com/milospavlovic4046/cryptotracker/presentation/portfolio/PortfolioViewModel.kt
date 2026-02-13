@@ -2,35 +2,98 @@ package com.milospavlovic4046.cryptotracker.presentation.portfolio
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.milospavlovic4046.cryptotracker.data.local.entity.PortfolioHoldingEntity
+import com.milospavlovic4046.cryptotracker.model.CoinDto
+import com.milospavlovic4046.cryptotracker.repository.MarketRepository
 import com.milospavlovic4046.cryptotracker.repository.PortfolioRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class PortfolioViewModel(
-    private val repo: PortfolioRepository
+    private val portfolioRepo: PortfolioRepository,
+    private val marketRepo: MarketRepository = MarketRepository() // kasnije Hilt
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(PortfolioUiState())
+    private val marketCoins = MutableStateFlow<List<CoinDto>>(emptyList())
+
+    private val _state = MutableStateFlow(PortfolioUiState(isLoadingPrices = true))
     val state: StateFlow<PortfolioUiState> = _state
 
     init {
-        repo.observeHoldings()
-            .onEach { list -> _state.value = PortfolioUiState(holdings = list) }
+        // 1) učitaj market coine
+        refreshMarketCoins()
+
+        // 2) kombinuje holdings + market prices
+        combine(
+            portfolioRepo.observeHoldings(),
+            marketCoins
+        ) { holdings, coins ->
+            buildUiState(holdings, coins)
+        }
+            .onEach { _state.value = it }
             .launchIn(viewModelScope)
     }
 
+    fun refreshMarketCoins() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoadingPrices = true, error = null) }
+            runCatching {
+                marketRepo.fetchMarketCoins().take(250)
+            }.onSuccess { coins ->
+                marketCoins.value = coins
+                _state.update { it.copy(isLoadingPrices = false) }
+            }.onFailure { e ->
+                _state.update {
+                    it.copy(
+                        isLoadingPrices = false,
+                        error = e.message ?: "Failed to load live prices"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun buildUiState(
+        holdings: List<PortfolioHoldingEntity>,
+        coins: List<CoinDto>
+    ): PortfolioUiState {
+        val coinMap = coins.associateBy { it.id }
+
+        val items = holdings.map { h ->
+            val coin = coinMap[h.coinId]
+
+            val price = coin?.currentPrice ?: 0.0
+            val value = h.amount * price
+
+            PortfolioItemUi(
+                coinId = h.coinId,
+                name = coin?.name ?: h.coinId,
+                symbol = (coin?.symbol ?: "").uppercase(),
+                imageUrl = coin?.image ?: "",
+                amount = h.amount,
+                currentPrice = price,
+                change24h = coin?.priceChangePercentage24H,
+                valueUsd = value
+            )
+        }
+
+        val total = items.sumOf { it.valueUsd }
+
+        return _state.value.copy(
+            items = items,
+            totalValueUsd = total
+        )
+    }
+
     fun addOrUpdate(coinId: String, amount: Double) {
-        viewModelScope.launch { repo.upsert(coinId, amount) }
+        viewModelScope.launch { portfolioRepo.upsert(coinId, amount) }
     }
 
     fun delete(coinId: String) {
-        viewModelScope.launch { repo.delete(coinId) }
+        viewModelScope.launch { portfolioRepo.delete(coinId) }
     }
 
     fun clearAll() {
-        viewModelScope.launch { repo.clearAll() }
+        viewModelScope.launch { portfolioRepo.clearAll() }
     }
 }

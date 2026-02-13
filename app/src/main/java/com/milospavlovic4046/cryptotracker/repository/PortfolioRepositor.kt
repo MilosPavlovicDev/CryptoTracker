@@ -20,4 +20,7 @@ class PortfolioRepository(
     suspend fun clearAll() {
         dao.clearAll()
     }
+    suspend fun getHoldingsOnce(): List<com.milospavlovic4046.cryptotracker.data.local.entity.PortfolioHoldingEntity> {
+        return dao.getAllHoldingsOnce()
+    }
 }

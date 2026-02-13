@@ -55,25 +55,46 @@ fun PortfolioScreen(
             }
         }
 
-        if (state.holdings.isEmpty()) {
-            Text(
-                text = "No coins in portfolio yet.",
-                modifier = Modifier.padding(16.dp)
-            )
+        if (state.items.isEmpty()) {
+            Text("No coins in portfolio yet.", modifier = Modifier.padding(16.dp))
         } else {
-            LazyColumn {
-                items(state.holdings) { h ->
-                    ListItem(
-                        headlineContent = { Text(h.coinId) },
-                        supportingContent = { Text("Amount: ${h.amount}") },
-                        trailingContent = {
-                            Row {
-                                TextButton(onClick = {
-                                    editingCoinId = h.coinId
-                                    showEditor = true
-                                }) { Text("Edit") }
+            Text(
+                text = "Total: $" + "%,.2f".format(state.totalValueUsd),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.titleMedium
+            )
 
-                                TextButton(onClick = { vm.delete(h.coinId) }) { Text("Delete") }
+            LazyColumn {
+                items(state.items) { item ->
+                    ListItem(
+                        leadingContent = {
+                            if (item.imageUrl.isNotBlank()) {
+                                CoinIcon(
+                                    url = item.imageUrl,
+                                    contentDescription = item.name,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        },
+                        headlineContent = { Text("${item.name} (${item.symbol})") },
+                        supportingContent = {
+                            val pct = item.change24h ?: 0.0
+                            Text(
+                                "Amount: ${item.amount}  •  Price: $" + "%,.2f".format(item.currentPrice) +
+                                        "  •  24h: " + (if (pct >= 0) "+" else "") + "%.2f".format(pct) + "%"
+                            )
+                        },
+                        trailingContent = {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("$" + "%,.2f".format(item.valueUsd))
+                                Row {
+                                    TextButton(onClick = {
+                                        editingCoinId = item.coinId
+                                        showEditor = true
+                                    }) { Text("Edit") }
+
+                                    TextButton(onClick = { vm.delete(item.coinId) }) { Text("Delete") }
+                                }
                             }
                         }
                     )
@@ -84,7 +105,9 @@ fun PortfolioScreen(
     }
 
     if (showEditor) {
-        val initialAmount = state.holdings.firstOrNull { it.coinId == editingCoinId }?.amount
+        val initialAmount = editingCoinId?.let { id ->
+            state.items.firstOrNull { it.coinId == id }?.amount
+        }
 
         PortfolioFullScreenEditor(
             initialCoinId = editingCoinId,
@@ -106,8 +129,6 @@ private fun PortfolioFullScreenEditor(
     onSave: (coinId: String, amount: Double) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-
-    // U ovom koraku, bez Hilt-a, najjednostavnije je direktno repo.
     val repo = remember { MarketRepository() }
 
     var isLoading by remember { mutableStateOf(true) }
@@ -119,6 +140,9 @@ private fun PortfolioFullScreenEditor(
 
     val isEditMode = initialCoinId != null
 
+    // edit mode locked coin
+    var lockedCoin by remember { mutableStateOf<CoinDto?>(null) }
+
     var amountText by remember { mutableStateOf(initialAmount?.toString() ?: "") }
 
     fun loadCoins() {
@@ -127,12 +151,13 @@ private fun PortfolioFullScreenEditor(
             error = null
 
             runCatching {
-                // Smanji broj da manje udara rate-limit
                 repo.fetchMarketCoins().take(150)
             }.onSuccess { coins ->
                 allCoins = coins
                 if (isEditMode) {
-                    selectedCoin = coins.firstOrNull { it.id == initialCoinId }
+                    val found = coins.firstOrNull { it.id == initialCoinId }
+                    selectedCoin = found
+                    lockedCoin = found
                 }
                 isLoading = false
             }.onFailure { e ->
@@ -187,87 +212,140 @@ private fun PortfolioFullScreenEditor(
                     TextButton(onClick = onDismiss) { Text("Close") }
                 }
 
-                // SEARCH
-                SearchBar(
-                    value = search,
-                    onValueChange = { search = it },
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                if (!isEditMode) {
+                    // SEARCH (only add mode)
+                    SearchBar(
+                        value = search,
+                        onValueChange = { search = it },
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
 
-                Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                // CONTENT
-                when {
-                    isLoading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
+                    when {
+                        isLoading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+
+                        error != null -> {
+                            Column(Modifier.padding(16.dp)) {
+                                Text("Error: $error")
+                                Spacer(Modifier.height(10.dp))
+                                Button(onClick = { loadCoins() }) { Text("Retry") }
+                            }
+                        }
+
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                            ) {
+                                items(filteredCoins) { coin ->
+                                    val isSelected = selectedCoin?.id == coin.id
+
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { selectedCoin = coin }
+                                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        CoinIcon(
+                                            url = coin.image,
+                                            contentDescription = coin.name,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+
+                                        Spacer(Modifier.width(10.dp))
+
+                                        Column(Modifier.weight(1f)) {
+                                            Text(coin.name, style = MaterialTheme.typography.titleMedium)
+                                            Text(coin.symbol.uppercase(), style = MaterialTheme.typography.labelMedium)
+                                        }
+
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text("$" + "%,.2f".format(coin.currentPrice))
+                                            val p = coin.priceChangePercentage24H ?: 0.0
+                                            Text((if (p >= 0) "+" else "-") + "%.2f".format(abs(p)) + "%")
+                                        }
+
+                                        if (isSelected) {
+                                            Spacer(Modifier.width(10.dp))
+                                            Text("✓")
+                                        }
+                                    }
+                                    Divider()
+                                }
+                            }
                         }
                     }
-
-                    error != null -> {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Error: $error")
-                            Spacer(Modifier.height(10.dp))
-                            Button(onClick = { loadCoins() }) { Text("Retry") }
+                } else {
+                    // EDIT MODE: no search, no list
+                    when {
+                        isLoading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
                         }
-                    }
 
-                    else -> {
-                        // LISTA COINOVA
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                        ) {
-                            items(filteredCoins) { coin ->
-                                val isSelected = selectedCoin?.id == coin.id
+                        error != null -> {
+                            Column(Modifier.padding(16.dp)) {
+                                Text("Error: $error")
+                                Spacer(Modifier.height(10.dp))
+                                Button(onClick = { loadCoins() }) { Text("Retry") }
+                            }
+                        }
 
+                        else -> {
+                            val coin = lockedCoin
+                            if (coin == null) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Text("Coin not found.")
+                                    Spacer(Modifier.height(10.dp))
+                                    TextButton(onClick = onDismiss) { Text("Close") }
+                                }
+                            } else {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable(
-                                            enabled = !isEditMode // u edit mode ne menjaš coin
-                                        ) {
-                                            selectedCoin = coin
-                                        }
-                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     CoinIcon(
                                         url = coin.image,
                                         contentDescription = coin.name,
-                                        modifier = Modifier.size(28.dp)
+                                        modifier = Modifier.size(32.dp)
                                     )
 
-                                    Spacer(Modifier.width(10.dp))
+                                    Spacer(Modifier.width(12.dp))
 
                                     Column(Modifier.weight(1f)) {
-                                        Text(coin.name, style = MaterialTheme.typography.titleMedium)
-                                        Text(
-                                            coin.symbol.uppercase(),
-                                            style = MaterialTheme.typography.labelMedium
-                                        )
+                                        Text(coin.name, style = MaterialTheme.typography.titleLarge)
+                                        Text(coin.symbol.uppercase(), style = MaterialTheme.typography.labelMedium)
                                     }
 
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text("$" + "%,.2f".format(coin.currentPrice))
                                         val p = coin.priceChangePercentage24H ?: 0.0
-                                        Text(
-                                            (if (p >= 0) "+" else "-") + "%.2f".format(abs(p)) + "%"
-                                        )
-                                    }
-
-                                    if (isSelected) {
-                                        Spacer(Modifier.width(10.dp))
-                                        Text("✓")
+                                        Text((if (p >= 0) "+" else "-") + "%.2f".format(abs(p)) + "%")
                                     }
                                 }
+
                                 Divider()
+                                Spacer(Modifier.weight(1f))
                             }
                         }
                     }

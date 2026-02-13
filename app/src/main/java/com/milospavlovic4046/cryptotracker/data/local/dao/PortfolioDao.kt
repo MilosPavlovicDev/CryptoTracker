@@ -21,4 +21,7 @@ interface PortfolioDao {
 
     @Query("DELETE FROM portfolio_holdings")
     suspend fun clearAll()
+
+    @Query("SELECT * FROM portfolio_holdings")
+    suspend fun getAllHoldingsOnce(): List<com.milospavlovic4046.cryptotracker.data.local.entity.PortfolioHoldingEntity>
 }

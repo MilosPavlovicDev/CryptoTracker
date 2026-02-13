@@ -18,11 +18,13 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import com.milospavlovic4046.cryptotracker.repository.MarketRepository
 
 @Composable
 fun AppRootScreen() {
 
     var selectedTab by remember { mutableIntStateOf(0) }
+    val ctx = LocalContext.current
 
     Scaffold(
         bottomBar = {
@@ -46,7 +48,7 @@ fun AppRootScreen() {
         when (selectedTab) {
 
             0 -> {
-                val homeVm: HomeViewModel = viewModel()
+                val homeVm: HomeViewModel = viewModel(factory = homeVmFactory(ctx))
                 HomeScreen(
                     vm = homeVm,
                     modifier = Modifier.padding(paddingValues)
@@ -54,10 +56,7 @@ fun AppRootScreen() {
             }
 
             1 -> {
-                val ctx = LocalContext.current
-                val portfolioVm: PortfolioViewModel = viewModel(
-                    factory = portfolioVmFactory(ctx)
-                )
+                val portfolioVm: PortfolioViewModel = viewModel(factory = portfolioVmFactory(ctx))
                 PortfolioScreen(
                     vm = portfolioVm,
                     modifier = Modifier.padding(paddingValues)
@@ -67,13 +66,26 @@ fun AppRootScreen() {
     }
 }
 
+private fun homeVmFactory(context: Context): ViewModelProvider.Factory {
+    return object : ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            val db = DatabaseProvider.get(context)
+            val portfolioRepo = PortfolioRepository(db.portfolioDao())
+            val marketRepo = MarketRepository()
+            @Suppress("UNCHECKED_CAST")
+            return HomeViewModel(marketRepo, portfolioRepo) as T
+        }
+    }
+}
+
 private fun portfolioVmFactory(context: Context): ViewModelProvider.Factory {
     return object : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             val db = DatabaseProvider.get(context)
-            val repo = PortfolioRepository(db.portfolioDao())
+            val portfolioRepo = PortfolioRepository(db.portfolioDao())
+            val marketRepo = MarketRepository()
             @Suppress("UNCHECKED_CAST")
-            return PortfolioViewModel(repo) as T
+            return PortfolioViewModel(portfolioRepo, marketRepo) as T
         }
     }
 }
