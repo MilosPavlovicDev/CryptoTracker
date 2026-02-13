@@ -13,11 +13,12 @@ import com.milospavlovic4046.cryptotracker.presentation.components.StatisticView
 import androidx.compose.foundation.layout.statusBarsPadding
 
 @Composable
-fun HomeScreen(vm: HomeViewModel) {
+fun HomeScreen(vm: HomeViewModel,
+               modifier: Modifier = Modifier) {
     val state by vm.state.collectAsStateWithLifecycle()
 
     Column(
-        Modifier
+        modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
     ) {

@@ -18,13 +18,14 @@ import com.milospavlovic4046.cryptotracker.presentation.components.HomeScreen
 import com.milospavlovic4046.cryptotracker.presentation.components.HomeViewModel
 import com.milospavlovic4046.cryptotracker.ui.theme.CryptoTrackerTheme
 
+import com.milospavlovic4046.cryptotracker.presentation.approotscreen.AppRootScreen
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             CryptoTrackerTheme {
-                val vm: HomeViewModel = viewModel()
-                HomeScreen(vm = vm)
+                AppRootScreen()
             }
         }
     }
