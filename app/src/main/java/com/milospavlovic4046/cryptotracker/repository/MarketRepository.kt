@@ -1,12 +1,13 @@
 package com.milospavlovic4046.cryptotracker.repository
 
-import com.milospavlovic4046.cryptotracker.model.CoinDto
 import com.milospavlovic4046.cryptotracker.data.remote.CoinGeckoApi
+import com.milospavlovic4046.cryptotracker.model.CoinDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class MarketRepository(
-    private val api: CoinGeckoApi = CoinGeckoApi()
+class MarketRepository @Inject constructor(
+    private val api: CoinGeckoApi
 ) {
     suspend fun fetchMarketCoins(): List<CoinDto> = withContext(Dispatchers.IO) {
         api.getCoinsMarket()

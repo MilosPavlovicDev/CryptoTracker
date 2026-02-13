@@ -3,8 +3,9 @@ package com.milospavlovic4046.cryptotracker.repository
 import com.milospavlovic4046.cryptotracker.data.local.dao.PortfolioDao
 import com.milospavlovic4046.cryptotracker.data.local.entity.PortfolioHoldingEntity
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-class PortfolioRepository(
+class PortfolioRepository @Inject constructor(
     private val dao: PortfolioDao
 ) {
     fun observeHoldings(): Flow<List<PortfolioHoldingEntity>> = dao.observeHoldings()

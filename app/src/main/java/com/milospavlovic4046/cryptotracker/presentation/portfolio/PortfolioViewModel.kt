@@ -6,12 +6,20 @@ import com.milospavlovic4046.cryptotracker.data.local.entity.PortfolioHoldingEnt
 import com.milospavlovic4046.cryptotracker.model.CoinDto
 import com.milospavlovic4046.cryptotracker.repository.MarketRepository
 import com.milospavlovic4046.cryptotracker.repository.PortfolioRepository
-import kotlinx.coroutines.flow.*
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class PortfolioViewModel(
+@HiltViewModel
+class PortfolioViewModel @Inject constructor(
     private val portfolioRepo: PortfolioRepository,
-    private val marketRepo: MarketRepository = MarketRepository() // kasnije Hilt
+    private val marketRepo: MarketRepository            // ✅ Hilt inject (nema MarketRepository())
 ) : ViewModel() {
 
     private val marketCoins = MutableStateFlow<List<CoinDto>>(emptyList())
@@ -20,10 +28,8 @@ class PortfolioViewModel(
     val state: StateFlow<PortfolioUiState> = _state
 
     init {
-        // 1) učitaj market coine
         refreshMarketCoins()
 
-        // 2) kombinuje holdings + market prices
         combine(
             portfolioRepo.observeHoldings(),
             marketCoins
@@ -61,7 +67,6 @@ class PortfolioViewModel(
 
         val items = holdings.map { h ->
             val coin = coinMap[h.coinId]
-
             val price = coin?.currentPrice ?: 0.0
             val value = h.amount * price
 
@@ -95,5 +100,8 @@ class PortfolioViewModel(
 
     fun clearAll() {
         viewModelScope.launch { portfolioRepo.clearAll() }
+    }
+    suspend fun loadCoinsForPicker(limit: Int = 150): List<CoinDto> {
+        return marketRepo.fetchMarketCoins().take(limit)
     }
 }

@@ -15,7 +15,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.milospavlovic4046.cryptotracker.model.CoinDto
-import com.milospavlovic4046.cryptotracker.repository.MarketRepository
 import com.milospavlovic4046.cryptotracker.presentation.components.CoinIcon
 import com.milospavlovic4046.cryptotracker.presentation.components.SearchBar
 import kotlinx.coroutines.launch
@@ -110,6 +109,7 @@ fun PortfolioScreen(
         }
 
         PortfolioFullScreenEditor(
+            vm = vm, // ✅ koristi VM (Hilt) umesto MarketRepository() u Composable
             initialCoinId = editingCoinId,
             initialAmount = initialAmount,
             onDismiss = { showEditor = false },
@@ -123,13 +123,13 @@ fun PortfolioScreen(
 
 @Composable
 private fun PortfolioFullScreenEditor(
+    vm: PortfolioViewModel, // ✅ ubacili vm
     initialCoinId: String?,
     initialAmount: Double?,
     onDismiss: () -> Unit,
     onSave: (coinId: String, amount: Double) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val repo = remember { MarketRepository() }
 
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -151,7 +151,8 @@ private fun PortfolioFullScreenEditor(
             error = null
 
             runCatching {
-                repo.fetchMarketCoins().take(150)
+                // VM koristi Hilt-injected MarketRepository
+                vm.loadCoinsForPicker(limit = 150)
             }.onSuccess { coins ->
                 allCoins = coins
                 if (isEditMode) {

@@ -19,7 +19,9 @@ import com.milospavlovic4046.cryptotracker.presentation.components.HomeViewModel
 import com.milospavlovic4046.cryptotracker.ui.theme.CryptoTrackerTheme
 
 import com.milospavlovic4046.cryptotracker.presentation.approotscreen.AppRootScreen
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
