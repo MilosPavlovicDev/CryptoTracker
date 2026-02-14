@@ -9,6 +9,7 @@ import com.milospavlovic4046.cryptotracker.repository.MarketRepository
 import com.milospavlovic4046.cryptotracker.repository.PortfolioRepository
 import com.milospavlovic4046.cryptotracker.data.local.dao.UserDao
 import com.milospavlovic4046.cryptotracker.repository.UserRepository
+import com.milospavlovic4046.cryptotracker.data.remote.UserApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,7 +31,9 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "crypto_tracker_hilt.db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
@@ -47,8 +50,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideUserRepository(dao: UserDao): UserRepository {
-        return UserRepository(dao)
+    fun provideUserRepository(dao: UserDao, userApi: UserApi): UserRepository {
+        return UserRepository(dao, userApi)
     }
 
     // ---- API + REPO ----

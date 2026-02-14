@@ -9,7 +9,7 @@ import com.milospavlovic4046.cryptotracker.data.local.entity.UserEntity
 
 @Database(
     entities = [PortfolioHoldingEntity::class, UserEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

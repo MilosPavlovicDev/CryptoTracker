@@ -1,61 +1,45 @@
 package com.milospavlovic4046.cryptotracker.presentation.approotscreen
 
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.milospavlovic4046.cryptotracker.presentation.SessionViewModel
 import com.milospavlovic4046.cryptotracker.presentation.components.HomeScreen
 import com.milospavlovic4046.cryptotracker.presentation.components.HomeViewModel
+import com.milospavlovic4046.cryptotracker.presentation.onboarding.OnboardingFlowScreen
+import com.milospavlovic4046.cryptotracker.presentation.onboarding.OnboardingViewModel
 import com.milospavlovic4046.cryptotracker.presentation.portfolio.PortfolioScreen
 import com.milospavlovic4046.cryptotracker.presentation.portfolio.PortfolioViewModel
-import com.milospavlovic4046.cryptotracker.presentation.onboarding.OnboardingProfileScreen
-import com.milospavlovic4046.cryptotracker.presentation.onboarding.OnboardingViewModel
-import com.milospavlovic4046.cryptotracker.presentation.onboarding.OnboardingWelcomeScreen
-import com.milospavlovic4046.cryptotracker.presentation.SessionViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun AppRootScreen() {
-
     val sessionVm: SessionViewModel = hiltViewModel()
     val user by sessionVm.user.collectAsStateWithLifecycle()
 
-    // Onboarding step: 0=welcome, 1=profile
-    var onboardingStep by remember { mutableIntStateOf(0) }
-
+    // 1) Ako nema user-a -> onboarding
     if (user == null) {
         val onboardingVm: OnboardingViewModel = hiltViewModel()
 
-        when (onboardingStep) {
-            0 -> OnboardingWelcomeScreen(
-                onStart = { onboardingStep = 1 }
-            )
-
-            1 -> OnboardingProfileScreen(
-                onSave = { name, age ->
-                    onboardingVm.saveUser(name, age)
-                    // ne moramo ručno da prebacujemo dalje;
-                    // SessionViewModel će dobiti user != null i UI će sam preći u app
-                }
-            )
-        }
-
+        OnboardingFlowScreen(
+            onFinished = {
+                // ništa: SessionViewModel prati Room i čim se upiše user, user != null i UI prelazi u app
+            },
+            onSaveProfile = { name, age ->
+                onboardingVm.saveUser(name, age)
+            }
+        )
         return
     }
 
-    val userName = user!!.name
+    // 2) User postoji -> normalna app
+    val currentUser = user!!
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -82,7 +66,7 @@ fun AppRootScreen() {
                 val homeVm: HomeViewModel = hiltViewModel()
                 HomeScreen(
                     vm = homeVm,
-                    userName = userName,
+                    userName = currentUser.name,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
@@ -91,7 +75,9 @@ fun AppRootScreen() {
                 val portfolioVm: PortfolioViewModel = hiltViewModel()
                 PortfolioScreen(
                     vm = portfolioVm,
-                    userName = userName,
+                    userName = currentUser.name,
+                    onEditName = { newName -> sessionVm.updateName(newName) },
+                    onDeleteUser = { sessionVm.deleteUser() },
                     modifier = Modifier.padding(paddingValues)
                 )
             }

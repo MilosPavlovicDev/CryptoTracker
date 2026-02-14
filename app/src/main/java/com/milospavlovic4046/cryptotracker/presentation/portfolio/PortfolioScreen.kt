@@ -21,11 +21,22 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @Composable
-fun PortfolioScreen(vm: PortfolioViewModel, userName: String, modifier: Modifier = Modifier) {
+fun PortfolioScreen(
+    vm: PortfolioViewModel,
+    userName: String,
+    onEditName: (String) -> Unit,
+    onDeleteUser: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val state by vm.state.collectAsStateWithLifecycle()
 
     var showEditor by remember { mutableStateOf(false) }
-    var editingCoinId by remember { mutableStateOf<String?>(null) } // null = add mode
+    var editingCoinId by remember { mutableStateOf<String?>(null) }
+
+    // NEW: dialogs
+    var showEditName by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var nameText by remember(userName) { mutableStateOf(userName) }
 
     Column(
         modifier = modifier
@@ -45,6 +56,10 @@ fun PortfolioScreen(vm: PortfolioViewModel, userName: String, modifier: Modifier
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showEditName = true }) { Text("Edit name") }
+                Spacer(Modifier.width(6.dp))
+                TextButton(onClick = { showDeleteConfirm = true }) { Text("Delete user") }
+                Spacer(Modifier.width(6.dp))
                 TextButton(onClick = { vm.clearAll() }) { Text("Clear") }
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = {
@@ -103,13 +118,63 @@ fun PortfolioScreen(vm: PortfolioViewModel, userName: String, modifier: Modifier
         }
     }
 
+    // ---- Edit name dialog ----
+    if (showEditName) {
+        AlertDialog(
+            onDismissRequest = { showEditName = false },
+            title = { Text("Edit name") },
+            text = {
+                OutlinedTextField(
+                    value = nameText,
+                    onValueChange = { nameText = it },
+                    singleLine = true,
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmed = nameText.trim()
+                        if (trimmed.isNotBlank()) onEditName(trimmed)
+                        showEditName = false
+                    }
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditName = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // ---- Delete user confirm ----
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete user?") },
+            text = { Text("This will remove your profile and show onboarding again.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDeleteUser()
+                    }
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // ---- Coin editor ----
     if (showEditor) {
         val initialAmount = editingCoinId?.let { id ->
             state.items.firstOrNull { it.coinId == id }?.amount
         }
 
         PortfolioFullScreenEditor(
-            vm = vm, // ✅ koristi VM (Hilt) umesto MarketRepository() u Composable
+            vm = vm,
             initialCoinId = editingCoinId,
             initialAmount = initialAmount,
             onDismiss = { showEditor = false },
@@ -121,9 +186,10 @@ fun PortfolioScreen(vm: PortfolioViewModel, userName: String, modifier: Modifier
     }
 }
 
+// --- existing editor (ostaje isti kao kod tebe) ---
 @Composable
 private fun PortfolioFullScreenEditor(
-    vm: PortfolioViewModel, // ✅ ubacili vm
+    vm: PortfolioViewModel,
     initialCoinId: String?,
     initialAmount: Double?,
     onDismiss: () -> Unit,
@@ -139,10 +205,7 @@ private fun PortfolioFullScreenEditor(
     var selectedCoin by remember { mutableStateOf<CoinDto?>(null) }
 
     val isEditMode = initialCoinId != null
-
-    // edit mode locked coin
     var lockedCoin by remember { mutableStateOf<CoinDto?>(null) }
-
     var amountText by remember { mutableStateOf(initialAmount?.toString() ?: "") }
 
     fun loadCoins() {
@@ -151,7 +214,6 @@ private fun PortfolioFullScreenEditor(
             error = null
 
             runCatching {
-                // VM koristi Hilt-injected MarketRepository
                 vm.loadCoinsForPicker(limit = 150)
             }.onSuccess { coins ->
                 allCoins = coins
@@ -198,7 +260,6 @@ private fun PortfolioFullScreenEditor(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                // TOP BAR
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -214,7 +275,6 @@ private fun PortfolioFullScreenEditor(
                 }
 
                 if (!isEditMode) {
-                    // SEARCH (only add mode)
                     SearchBar(
                         value = search,
                         onValueChange = { search = it },
@@ -230,11 +290,8 @@ private fun PortfolioFullScreenEditor(
                                     .fillMaxWidth()
                                     .padding(24.dp),
                                 contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
+                            ) { CircularProgressIndicator() }
                         }
-
                         error != null -> {
                             Column(Modifier.padding(16.dp)) {
                                 Text("Error: $error")
@@ -242,7 +299,6 @@ private fun PortfolioFullScreenEditor(
                                 Button(onClick = { loadCoins() }) { Text("Retry") }
                             }
                         }
-
                         else -> {
                             LazyColumn(
                                 modifier = Modifier
@@ -289,7 +345,6 @@ private fun PortfolioFullScreenEditor(
                         }
                     }
                 } else {
-                    // EDIT MODE: no search, no list
                     when {
                         isLoading -> {
                             Box(
@@ -297,11 +352,8 @@ private fun PortfolioFullScreenEditor(
                                     .fillMaxWidth()
                                     .padding(24.dp),
                                 contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
+                            ) { CircularProgressIndicator() }
                         }
-
                         error != null -> {
                             Column(Modifier.padding(16.dp)) {
                                 Text("Error: $error")
@@ -309,7 +361,6 @@ private fun PortfolioFullScreenEditor(
                                 Button(onClick = { loadCoins() }) { Text("Retry") }
                             }
                         }
-
                         else -> {
                             val coin = lockedCoin
                             if (coin == null) {
@@ -330,21 +381,17 @@ private fun PortfolioFullScreenEditor(
                                         contentDescription = coin.name,
                                         modifier = Modifier.size(32.dp)
                                     )
-
                                     Spacer(Modifier.width(12.dp))
-
                                     Column(Modifier.weight(1f)) {
                                         Text(coin.name, style = MaterialTheme.typography.titleLarge)
                                         Text(coin.symbol.uppercase(), style = MaterialTheme.typography.labelMedium)
                                     }
-
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text("$" + "%,.2f".format(coin.currentPrice))
                                         val p = coin.priceChangePercentage24H ?: 0.0
                                         Text((if (p >= 0) "+" else "-") + "%.2f".format(abs(p)) + "%")
                                     }
                                 }
-
                                 Divider()
                                 Spacer(Modifier.weight(1f))
                             }
@@ -352,7 +399,6 @@ private fun PortfolioFullScreenEditor(
                     }
                 }
 
-                // BOTTOM: amount + save
                 Divider()
                 Column(
                     modifier = Modifier
@@ -386,9 +432,7 @@ private fun PortfolioFullScreenEditor(
                         },
                         enabled = canSave,
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Save")
-                    }
+                    ) { Text("Save") }
                 }
             }
         }
