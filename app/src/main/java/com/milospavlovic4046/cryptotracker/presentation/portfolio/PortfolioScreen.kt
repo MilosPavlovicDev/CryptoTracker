@@ -5,11 +5,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddCircle
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -20,6 +26,7 @@ import com.milospavlovic4046.cryptotracker.presentation.components.SearchBar
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PortfolioScreen(
     vm: PortfolioViewModel,
@@ -33,7 +40,7 @@ fun PortfolioScreen(
     var showEditor by remember { mutableStateOf(false) }
     var editingCoinId by remember { mutableStateOf<String?>(null) }
 
-    // NEW: dialogs
+    // dialogs
     var showEditName by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var nameText by remember(userName) { mutableStateOf(userName) }
@@ -43,34 +50,49 @@ fun PortfolioScreen(
             .fillMaxSize()
             .statusBarsPadding()
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "${userName}'s portfolio",
-                style = MaterialTheme.typography.titleMedium
-            )
+        // ✅ CLEAN HEADER (TopAppBar) + icon actions (staje na svakom ekranu)
+        TopAppBar(
+            title = {
+                Text(
+                    text = "${userName}'s portfolio",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            },
+            actions = {
+                // Edit name
+                IconButton(onClick = { showEditName = true }) {
+                    Icon(Icons.Outlined.Edit, contentDescription = "Edit name")
+                }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { showEditName = true }) { Text("Edit name") }
-                Spacer(Modifier.width(6.dp))
-                TextButton(onClick = { showDeleteConfirm = true }) { Text("Delete user") }
-                Spacer(Modifier.width(6.dp))
-                TextButton(onClick = { vm.clearAll() }) { Text("Clear") }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = {
+                // Delete user
+                IconButton(onClick = { showDeleteConfirm = true }) {
+                    Icon(Icons.Outlined.Delete, contentDescription = "Delete user")
+                }
+
+                // Clear portfolio
+                IconButton(onClick = { vm.clearAll() }) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = "Clear portfolio")
+                }
+
+                // Add (krug +)
+                IconButton(onClick = {
                     editingCoinId = null
                     showEditor = true
-                }) { Text("Add") }
+                }) {
+                    Icon(Icons.Outlined.AddCircle, contentDescription = "Add coin")
+                }
             }
-        }
+        )
+
+        Spacer(Modifier.height(8.dp))
 
         if (state.items.isEmpty()) {
-            Text("No coins in portfolio yet.", modifier = Modifier.padding(16.dp))
+            Text(
+                text = "No coins in portfolio yet.",
+                modifier = Modifier.padding(16.dp)
+            )
         } else {
             Text(
                 text = "Total: $" + "%,.2f".format(state.totalValueUsd),
@@ -292,6 +314,7 @@ private fun PortfolioFullScreenEditor(
                                 contentAlignment = Alignment.Center
                             ) { CircularProgressIndicator() }
                         }
+
                         error != null -> {
                             Column(Modifier.padding(16.dp)) {
                                 Text("Error: $error")
@@ -299,6 +322,7 @@ private fun PortfolioFullScreenEditor(
                                 Button(onClick = { loadCoins() }) { Text("Retry") }
                             }
                         }
+
                         else -> {
                             LazyColumn(
                                 modifier = Modifier
@@ -354,6 +378,7 @@ private fun PortfolioFullScreenEditor(
                                 contentAlignment = Alignment.Center
                             ) { CircularProgressIndicator() }
                         }
+
                         error != null -> {
                             Column(Modifier.padding(16.dp)) {
                                 Text("Error: $error")
@@ -361,6 +386,7 @@ private fun PortfolioFullScreenEditor(
                                 Button(onClick = { loadCoins() }) { Text("Retry") }
                             }
                         }
+
                         else -> {
                             val coin = lockedCoin
                             if (coin == null) {
@@ -392,6 +418,7 @@ private fun PortfolioFullScreenEditor(
                                         Text((if (p >= 0) "+" else "-") + "%.2f".format(abs(p)) + "%")
                                     }
                                 }
+
                                 Divider()
                                 Spacer(Modifier.weight(1f))
                             }
